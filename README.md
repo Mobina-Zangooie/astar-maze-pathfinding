@@ -1,72 +1,79 @@
 # A* Maze Pathfinding
 
-A Python implementation of the A* search algorithm for finding a path through a maze. This project was developed as an AI course assignment.
+A Python implementation of the A* search algorithm that finds the cheapest path through a 5×5 maze with a bridge and a river. Developed as an AI course assignment.
 
 ## Problem
 
-Find a path from the start cell to the goal cell in a maze. Cells marked 0 are walls and cells marked 1 are traversable. Movement is allowed in four directions: up, down, left, and right.
+A chick wants to reach its mother (the hen) in a 5×5 maze (see [`problem.jpg`](problem.jpg)).
 
-The maze is encoded directly in A-Star-Algorithm.py as an 11 × 11 list. The start coordinate is (1, 1) and the goal coordinate is (1, 7), using zero-based (row, column) coordinates.
+- Moves: left, down, right, up. When several moves are equally good, they are preferred in this order.
+- Every move costs 1, except:
+  - crossing the **bridge** costs `x`
+  - crossing the **river** costs `y`
+- `x` and `y` are derived from the student numbers, as defined in the assignment.
 
-## Inputs
+The task: find the path the chick takes, the cells that are explored, and the total cost.
 
-The algorithm receives:
-- maze: a two-dimensional list where 0 means wall and 1 means walkable.
-- start: the starting cell, (1, 1).
-- goal: the target cell, (1, 7).
-- bridge = 4 and river = 2: additional cost constants used by the code's special-transition checks.
+## Approach
 
-The maze, start, goal, and cost constants are currently hard-coded in the Python file; the program does not ask the user for interactive input.
+### Maze representation
 
-## Cost Function
+The maze is stored in `a_star_maze.py` as an 11×11 grid: the 5×5 cells sit at odd coordinates, and the entries between them are walls (`0`) or openings (`1`). The code converts this grid into a graph of 5×5 cells, so every move goes from one cell to a neighboring cell.
 
-The implementation starts each move with a base cost of 1. It then adds the configured bridge cost (4) or river cost (2) when the relevant coordinate checks match.
+### Cost function
 
-For a node n, A* uses:
+- A normal move costs `STEP_COST = 1`.
+- The two special connections (bridge and river) are defined once in `SPECIAL_MOVES` and have their own cost, `BRIDGE_COST` and `RIVER_COST`. They replace the normal cost for that move.
+- All constants are at the top of the file, so you can change `x` and `y` and run again.
 
-- g(n): accumulated path cost from the start to n.
-- h(n): estimated remaining cost from n to the goal.
-- f(n) = g(n) + h(n): priority used to select the next node.
+### Heuristic
 
-Implementation note: the special bridge/river checks are coordinate-specific and direction-specific in the current code. They should be reviewed before treating the result as a fully validated weighted-maze solution.
+Manhattan distance to the goal, scaled by the cheapest possible move cost:
 
-## Heuristic
+```
+h(a, b) = cheapest_move_cost * (|a.row - b.row| + |a.col - b.col|)
+```
 
-The heuristic is Manhattan distance:
+It never overestimates the real remaining cost and is consistent, so A* returns an optimal path and each cell needs to be expanded only once.
 
-h(a, b) = abs(a.row - b.row) + abs(a.column - b.column)
+### Algorithm
 
-This estimates the number of horizontal and vertical steps between two cells. It is commonly used for four-direction grid movement. For a weighted-cost problem, heuristic admissibility depends on the minimum possible cost per step and how the special costs are modeled.
+A* keeps an open list ordered by `f(n) = g(n) + h(n)`, where `g(n)` is the cost from the start and `h(n)` is the heuristic. Equal `f` values are resolved by insertion order, which follows the move priority (left, down, right, up).
 
 ## How to Run
 
-Requirements: Python 3. No third-party packages are required; the code uses Python's standard-library heapq.
+Python 3 is required. No third-party packages are needed.
 
-Run from the repository directory:
+```bash
+python a_star_maze.py
+```
 
-python A-Star-Algorithm.py
-The script prints the converted 5 × 5 path and the filtered path cost.
+## Example Output
 
-## Example Result
+With `BRIDGE_COST = 4` and `RIVER_COST = 2`:
 
-Running the current implementation with its hard-coded maze returns this path in the original 11 × 11 coordinates:
+```
+Path: [(0, 0), (1, 0), (1, 1), (2, 1), (3, 1), (3, 2), (2, 2), (1, 2), (1, 3), (0, 3)]
+Expanded cells (in order): [(0, 0), (1, 0), (1, 1), (2, 0), (2, 1), (3, 1), (3, 2), (2, 2), (2, 3), (1, 2), (3, 0), (4, 2), (3, 3), (2, 4), (4, 3), (1, 3), (1, 4), (0, 3)]
+Total cost: 12
+```
 
-(1,1) → (2,1) → (3,1) → (3,2) → (3,3) → (4,3) → (5,3) → (6,3) → (7,3) → (7,4) → (7,5) → (6,5) → (5,5) → (4,5) → (3,5) → (3,6) → (3,7) → (2,7) → (1,7)
+Coordinates are `(row, column)` in the 5×5 maze, starting at `(0, 0)`. The path crosses the bridge between `(1, 2)` and `(1, 3)`: 8 normal moves (cost 1 each) plus the bridge (cost 4) give a total of 12.
 
-The a_star() function returns a cost of 22 for that path. The script's final printed filtered-path cost is calculated separately after filtering the path and is 12; these are different calculations in the current code.
+![A* path output on the maze](astar-maze-output.png)
 
-## Output Visualization
+## Why A*?
 
-The image below visualizes the path returned by the current A* function on the original 11 × 11 maze.
-
-![A* path output on the 11x11 maze](astar-maze-output.png)
+- **Uses the costs.** Unlike BFS, A* handles moves with different costs, such as the bridge and the river.
+- **Guided search.** Unlike Dijkstra's algorithm, which expands cells in every direction, A* uses the heuristic to prefer cells that are closer to the goal, so it usually expands fewer cells.
+- **Optimal.** With an admissible and consistent heuristic, the returned path has the lowest possible cost.
 
 ## Files
 
-- A-Star-Algorithm.py — A* implementation and hard-coded maze.
-- problem.jpg — original problem illustration.
-- astar-maze-output.png — visualization of the path returned by the current implementation.
+- `a_star_maze.py`: A* implementation and the maze
+- `problem.jpg`: the original problem illustration
+- `astar-maze-output.png`: visualization of the resulting path
 
-## Project Status
+## Authors
 
-Completed AI course project. The implementation and its cost-calculation details can be refined in a future version.
+Mobina Zangooie and Fateme Gheidy
